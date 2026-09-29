@@ -63,6 +63,9 @@ export function createTerrainMaterial() {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\n${vertexHeader}`)
+      // normal 속성을 지웠으므로 위쪽 방향으로 대신한다.
+      // 0 벡터를 두면 그림자 좌표 계산(shadowmap_vertex)에서 NaN이 되어 그림자가 사라진다
+      .replace('#include <beginnormal_vertex>', 'vec3 objectNormal = vec3(0.0, 1.0, 0.0);')
       .replace(
         '#include <begin_vertex>',
         `vec3 transformed = vec3(position);
