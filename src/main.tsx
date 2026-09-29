@@ -5,6 +5,8 @@ import { OrbitControls, StatsGl } from "@react-three/drei";
 import { useControls } from "leva";
 import { buildTerrain } from "./terrain/buildTerrain";
 import { createTerrainMaterial } from "./terrain/terrainMaterial";
+import { Clouds } from "./clouds/Clouds";
+import { Sun } from "./Sun";
 import type { TerrainParams } from "./terrain/config";
 
 function Terrain() {
@@ -62,21 +64,22 @@ function Terrain() {
   // 값이 바뀌어 새 지오메트리를 만들면 이전 것은 GPU 메모리에서 해제
   useEffect(() => () => geo.dispose(), [geo]);
   return (
-    // 판의 bounding box는 높이 0 기준이라, 솟은 지형이 화면 밖으로 잘못 판정되지 않게 컬링을 끈다
-    <mesh geometry={geo} material={material} frustumCulled={false} />
+    <>
+      {/* 판의 bounding box는 높이 0 기준이라, 솟은 지형이 화면 밖으로 잘못 판정되지 않게 컬링을 끈다 */}
+      <mesh geometry={geo} material={material} frustumCulled={false} receiveShadow />
+      <Clouds size={params.size} />
+      <Sun size={params.size} />
+    </>
   );
 }
 
 createRoot(document.getElementById("root")!).render(
   // flat: R3F 기본 톤매핑을 꺼서 지층 색을 그대로 보이게 한다
-  <Canvas flat camera={{ position: [0, 90, 150], fov: 55, far: 2000 }}>
+  <Canvas flat shadows camera={{ position: [0, 90, 150], fov: 55, far: 2000 }}>
     <color attach="background" args={["#9cc7e8"]} />
+    {/* 공기: 배경색으로 살짝 흐려지며 멀어질수록 끝을 가늠하기 어렵게 */}
+    <fog attach="fog" args={["#9cc7e8", 200, 900]} />
     <hemisphereLight args={["#cfe6ff", "#6b3a20", 0.8]} />
-    <directionalLight
-      color="#fff1d6"
-      intensity={2.5}
-      position={[-100, 120, 60]}
-    />
     <Terrain />
     <OrbitControls />
     <StatsGl trackGPU />
