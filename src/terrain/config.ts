@@ -19,3 +19,5 @@ export const LAYERS = [
   "#a4482a",
   "#d4a373",
 ];
+
+export const RIVER = "#3f7f8c";
