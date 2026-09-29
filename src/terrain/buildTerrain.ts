@@ -8,6 +8,8 @@ export function buildTerrain(params: TerrainParams) {
   const pos = geo.attributes.position;
   for (let i = 0; i < pos.count; i++) pos.setY(i, height(pos.getX(i), pos.getZ(i), params));
 
+  // 텍스처를 쓰지 않으니 uv는 메모리만 차지한다
+  geo.deleteAttribute('uv');
   // 삼각형마다 꼭짓점을 따로 가져야 면 단위로 색을 칠할 수 있다
   geo = geo.toNonIndexed();
   geo.computeVertexNormals();
