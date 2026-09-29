@@ -4,6 +4,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, StatsGl } from "@react-three/drei";
 import { useControls } from "leva";
 import { buildTerrain } from "./terrain/buildTerrain";
+import { createTerrainMaterial } from "./terrain/terrainMaterial";
 import type { TerrainParams } from "./terrain/config";
 
 function Terrain() {
@@ -30,17 +31,27 @@ function Terrain() {
     canyonWidth: { value: 40, min: 1, max: 300, step: 1, label: "협곡 폭" },
     step: { value: 6, min: 1, max: 30, step: 1, label: "계단 높이" },
   });
-  // perf: 재생성 시작 시각과, 그 뒤 지나간 프레임 수
+  // perf: 값 변경 시작 시각과, 그 뒤 지나간 프레임 수. 판 생성보다 먼저 찍어야 build 시간까지 포함된다
   const perf = useRef({ start: 0, frames: -1 });
+  useMemo(() => {
+    perf.current = { start: performance.now(), frames: 0 };
+  }, Object.values(params));
+
+  // 판은 크기·칸 수가 바뀔 때만 다시 만든다
   const geo = useMemo(() => {
     const start = performance.now();
-    const g = buildTerrain(params);
+    const g = buildTerrain(params.size, params.seg);
     const build = performance.now() - start;
-    const bytes = Object.values(g.attributes).reduce((sum, a) => sum + a.array.byteLength, 0);
+    const bytes =
+      Object.values(g.attributes).reduce((sum, a) => sum + a.array.byteLength, 0) +
+      (g.index?.array.byteLength ?? 0);
     console.log(`[perf] seg=${params.seg} build=${build.toFixed(0)}ms geometry=${(bytes / 1024 ** 2).toFixed(1)}MB`);
-    perf.current = { start, frames: 0 };
     return g;
-  }, Object.values(params));
+  }, [params.size, params.seg]);
+  const { material, update } = useMemo(createTerrainMaterial, []);
+  useEffect(() => () => material.dispose(), [material]);
+  // uniform 값 7개를 대입할 뿐이라 매 렌더 실행해도 된다
+  update(params);
   // useFrame은 그리기 직전에 불리므로, 두 번째 프레임에서 재야 새 지형을 실제로 그린 시간까지 포함된다
   useFrame(({ gl }) => {
     if (perf.current.frames < 0 || ++perf.current.frames < 2) return;
@@ -51,9 +62,8 @@ function Terrain() {
   // 값이 바뀌어 새 지오메트리를 만들면 이전 것은 GPU 메모리에서 해제
   useEffect(() => () => geo.dispose(), [geo]);
   return (
-    <mesh geometry={geo}>
-      <meshStandardMaterial vertexColors flatShading />
-    </mesh>
+    // 판의 bounding box는 높이 0 기준이라, 솟은 지형이 화면 밖으로 잘못 판정되지 않게 컬링을 끈다
+    <mesh geometry={geo} material={material} frustumCulled={false} />
   );
 }
 
