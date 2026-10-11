@@ -8,6 +8,8 @@ export type TerrainParams = {
   smallAmp: number; // 작은 노이즈 세기
   canyonWidth: number; // 협곡 폭 (강에서 이 거리부터 원래 높이)
   step: number; // 계단 한 칸 높이
+  rain: number; // 연 강수량 (mm). 건조 기후 약 300, 습윤 기후 약 1200
+  riverArea: number; // 이보다 넓은 땅의 물이 모이는 곳을 강으로 본다 (배수 면적)
 };
 
 export const LAYERS = [

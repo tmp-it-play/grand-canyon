@@ -32,6 +32,8 @@ function Terrain() {
     },
     canyonWidth: { value: 40, min: 1, max: 300, step: 1, label: "협곡 폭" },
     step: { value: 6, min: 1, max: 30, step: 1, label: "계단 높이" },
+    rain: { value: 300, min: 100, max: 2000, step: 50, label: "연 강수량 (mm)" },
+    riverArea: { value: 10000, min: 500, max: 50000, step: 500, label: "강이 되는 배수 면적" },
   });
   // perf: 값 변경 시작 시각과, 그 뒤 지나간 프레임 수. 판 생성보다 먼저 찍어야 build 시간까지 포함된다
   const perf = useRef({ start: 0, frames: -1 });
@@ -39,20 +41,21 @@ function Terrain() {
     perf.current = { start: performance.now(), frames: 0 };
   }, Object.values(params));
 
-  // 판은 크기·칸 수가 바뀔 때만 다시 만든다
+  // 높이와 강은 CPU가 계산하므로, 협곡 폭·계단 높이를 뺀 값이 바뀔 때만 다시 만든다
+  const { size, seg, base, bigGap, bigAmp, smallGap, smallAmp, rain, riverArea } = params;
   const geo = useMemo(() => {
     const start = performance.now();
-    const g = buildTerrain(params.size, params.seg);
+    const g = buildTerrain(params);
     const build = performance.now() - start;
     const bytes =
       Object.values(g.attributes).reduce((sum, a) => sum + a.array.byteLength, 0) +
       (g.index?.array.byteLength ?? 0);
     console.log(`[perf] seg=${params.seg} build=${build.toFixed(0)}ms geometry=${(bytes / 1024 ** 2).toFixed(1)}MB`);
     return g;
-  }, [params.size, params.seg]);
+  }, [size, seg, base, bigGap, bigAmp, smallGap, smallAmp, rain, riverArea]);
   const { material, update } = useMemo(createTerrainMaterial, []);
   useEffect(() => () => material.dispose(), [material]);
-  // uniform 값 7개를 대입할 뿐이라 매 렌더 실행해도 된다
+  // uniform 값 2개를 대입할 뿐이라 매 렌더 실행해도 된다
   update(params);
   // useFrame은 그리기 직전에 불리므로, 두 번째 프레임에서 재야 새 지형을 실제로 그린 시간까지 포함된다
   useFrame(({ gl }) => {
@@ -65,7 +68,7 @@ function Terrain() {
   useEffect(() => () => geo.dispose(), [geo]);
   return (
     <>
-      {/* 판의 bounding box는 높이 0 기준이라, 솟은 지형이 화면 밖으로 잘못 판정되지 않게 컬링을 끈다 */}
+      {/* bounding box는 깎기 전 높이 기준이라, 셰이더가 깎아 내린 협곡이 화면 밖으로 잘못 판정되지 않게 컬링을 끈다 */}
       <mesh geometry={geo} material={material} frustumCulled={false} receiveShadow />
       <Clouds size={params.size} />
       <Sun size={params.size} />
